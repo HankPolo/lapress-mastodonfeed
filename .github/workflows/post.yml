@@ -2,8 +2,8 @@ name: RSS to Mastodon
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # UTC, every 15 min
-  workflow_dispatch:          # manual "Run workflow" button
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,6 +24,14 @@ jobs:
 
       - run: pip install --quiet feedparser requests
 
+      - name: Check secrets
+        env:
+          MASTODON_INSTANCE: ${{ secrets.MASTODON_INSTANCE }}
+          MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+        run: |
+          if [ -z "$MASTODON_INSTANCE" ]; then echo "INSTANCE MISSING"; else echo "instance: $MASTODON_INSTANCE"; fi
+          if [ -z "$MASTODON_TOKEN" ]; then echo "TOKEN MISSING"; else echo "token length: ${#MASTODON_TOKEN}"; fi
+
       - name: Run bot
         env:
           MASTODON_INSTANCE: ${{ secrets.MASTODON_INSTANCE }}
@@ -34,6 +42,10 @@ jobs:
       - name: Save state
         if: always()
         run: |
+          if [ ! -f seen.json ]; then
+            echo "seen.json missing - bot.py did not complete; nothing to commit"
+            exit 0
+          fi
           git config user.name  "rss-bot"
           git config user.email "actions@github.com"
           git add seen.json
